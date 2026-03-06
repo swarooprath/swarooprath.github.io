@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<base target="_blank">
+<title>Kubernetes Attack Matrix</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #f0f4f8;
+    --bg-pattern: rgba(0,80,120,0.03);
+    --surface: #ffffff;
+    --surface-hover: #f1f5f9;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --border: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --accent: #0891b2;
+    --accent-dim: #e0f7fa;
+    --accent-text: #065666;
+    --tactic-bg: #0e7490;
+    --tactic-text: #ffffff;
+    --risk-bg: #fff1f2;
+    --risk-border: #fecdd3;
+    --risk-icon: #e11d48;
+    --fix-bg: #f0fdf4;
+    --fix-border: #bbf7d0;
+    --fix-icon: #16a34a;
+    --card-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    --card-shadow-hover: 0 4px 12px rgba(0,0,0,0.1);
+    --expand-bg: #f8fafc;
+}
+body.dark-mode {
+    --bg: #0b1120;
+    --bg-pattern: rgba(8,145,178,0.04);
+    --surface: #151d2e;
+    --surface-hover: #1e293b;
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --border: #1e293b;
+    --border-strong: #334155;
+    --accent: #22d3ee;
+    --accent-dim: rgba(34,211,238,0.08);
+    --accent-text: #67e8f9;
+    --tactic-bg: #164e63;
+    --tactic-text: #cffafe;
+    --risk-bg: rgba(225,29,72,0.08);
+    --risk-border: rgba(225,29,72,0.2);
+    --risk-icon: #fb7185;
+    --fix-bg: rgba(22,163,74,0.08);
+    --fix-border: rgba(22,163,74,0.2);
+    --fix-icon: #4ade80;
+    --card-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    --card-shadow-hover: 0 4px 16px rgba(0,0,0,0.4);
+    --expand-bg: #1a2332;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: auto;
+}
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+        radial-gradient(ellipse at 20% 0%, var(--bg-pattern) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 100%, var(--bg-pattern) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.container {
+    position: relative;
+    z-index: 1;
+    padding: 2rem 1.5rem 3rem;
+    max-width: 100%;
+}
+
+/* Header */
+.header {
+    text-align: center;
+    margin-bottom: 2rem;
+    animation: fadeInDown 0.6s cubic-bezier(0.22,1,0.36,1) both;
+}
+.header h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 2rem;
+    letter-spacing: -0.03em;
+    color: var(--text-primary);
+    margin-bottom: 0.4rem;
+}
+.header h1 span {
+    color: var(--accent);
+}
+.header p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    max-width: 700px;
+    margin: 0 auto;
+    line-height: 1.5;
+}
+.header .subtitle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding: 0.35rem 0.9rem;
+    background: var(--accent-dim);
+    color: var(--accent-text);
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 500;
+}
+
+/* Legend */
+.legend {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    animation: fadeInUp 0.5s 0.15s cubic-bezier(0.22,1,0.36,1) both;
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+.legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+.legend-dot.risk { background: var(--risk-icon); }
+.legend-dot.fix { background: var(--fix-icon); }
+.legend-dot.click { background: var(--accent); }
+
+/* Matrix Grid */
+.matrix {
+    display: grid;
+    grid-template-columns: repeat(9, minmax(240px, 1fr));
+    gap: 0.75rem;
+    animation: fadeInUp 0.6s 0.2s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+/* Tactic Column */
+.tactic {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.tactic-header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+}
+.tactic-header {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.65rem 0.75rem;
+    background: var(--tactic-bg);
+    color: var(--tactic-text);
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+.tactic-header .tactic-num {
+    display: block;
+    font-size: 0.65rem;
+    opacity: 0.7;
+    font-weight: 400;
+    margin-bottom: 2px;
+    letter-spacing: 0.1em;
+}
+.tactic-header .header-chevron {
+    width: 12px;
+    height: 12px;
+    opacity: 0.7;
+    flex-shrink: 0;
+    transition: transform 0.25s cubic-bezier(0.22,1,0.36,1);
+}
+.tactic-header-wrap.active .header-chevron {
+    transform: rotate(180deg);
+}
+.tactic-header-detail {
+    max-height: 0;
+    overflow: hidden;
+    background: var(--tactic-bg);
+    transition: max-height 0.35s cubic-bezier(0.22,1,0.36,1);
+}
+.tactic-header-wrap.active .tactic-header-detail {
+    max-height: 300px;
+}
+.tactic-header-detail-inner {
+    padding: 0 0.65rem 0.65rem;
+    font-size: 0.73rem;
+    line-height: 1.55;
+    color: var(--tactic-text);
+    opacity: 0.9;
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: 400;
+    font-family: 'IBM Plex Sans', sans-serif;
+    border-top: 1px solid rgba(255,255,255,0.15);
+    padding-top: 0.5rem;
+}
+
+/* Technique Card */
+.technique {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+}
+.technique:hover {
+    border-color: var(--accent);
+    box-shadow: var(--card-shadow-hover);
+    transform: translateY(-1px);
+}
+.technique.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-dim), var(--card-shadow-hover);
+}
+.technique-name {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 500;
+    font-size: 0.8rem;
+    padding: 0.6rem 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    line-height: 1.35;
+    color: var(--text-primary);
+}
+.technique-name .chevron {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    color: var(--text-muted);
+    transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), color 0.2s;
+}
+.technique.active .chevron {
+    transform: rotate(180deg);
+    color: var(--accent);
+}
+
+/* Expanded Detail Panel */
+.technique-detail {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s cubic-bezier(0.22,1,0.36,1);
+    background: var(--expand-bg);
+    border-top: 0 solid var(--border);
+}
+.technique.active .technique-detail {
+    max-height: 600px;
+    border-top-width: 1px;
+}
+.detail-inner {
+    padding: 0.65rem 0.75rem 0.75rem;
+}
+.detail-section {
+    margin-bottom: 0.6rem;
+}
+.detail-section:last-child {
+    margin-bottom: 0;
+}
+.detail-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.3rem;
+}
+.detail-label.risk {
+    color: var(--risk-icon);
+}
+.detail-label.fix {
+    color: var(--fix-icon);
+}
+.detail-label .icon {
+    font-size: 0.8rem;
+}
+.detail-text {
+    font-size: 0.76rem;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    padding: 0.45rem 0.6rem;
+    border-radius: 6px;
+}
+.detail-section.risk .detail-text {
+    background: var(--risk-bg);
+    border-left: 2px solid var(--risk-border);
+}
+.detail-section.fix .detail-text {
+    background: var(--fix-bg);
+    border-left: 2px solid var(--fix-border);
+}
+
+/* Footer */
+.footer {
+    text-align: center;
+    margin-top: 2.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+}
+.footer a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+/* Animations */
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* === INFRA-MENU-CSS === */
+.viz-menu {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10000;
+    font-family: inherit;
+}
+.viz-menu-toggle {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid var(--border, #e2e8f0);
+    background: var(--surface, #fff);
+    color: var(--text-secondary, #64748b);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, border-color 0.15s, transform 0.15s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.viz-menu-toggle:hover {
+    background: var(--surface-hover, #f8fafc);
+    border-color: var(--border-strong, #cbd5e1);
+    transform: scale(1.05);
+}
+.viz-menu-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 200px;
+    background: var(--surface, #fff);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 10px;
+    padding: 4px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+    pointer-events: none;
+    transition: opacity 0.15s, transform 0.15s;
+}
+.viz-menu.open .viz-menu-panel {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+.viz-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text-primary, #0f172a);
+    font-size: 0.85rem;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.1s;
+    font-family: inherit;
+}
+.viz-menu-item:hover {
+    background: var(--surface-hover, #f1f5f9);
+}
+.viz-menu-icon {
+    width: 20px;
+    text-align: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+[data-animate] {
+    opacity: 0;
+    transition-property: opacity, transform, filter;
+    transition-duration: 0.6s;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+[data-animate="fade-up"] { transform: translateY(20px); }
+[data-animate="fade-down"] { transform: translateY(-20px); }
+[data-animate="fade-left"] { transform: translateX(-20px); }
+[data-animate="fade-right"] { transform: translateX(20px); }
+[data-animate="scale-up"] { transform: scale(0.95); }
+[data-animate="blur-in"] { filter: blur(8px); }
+[data-animate].is-visible {
+    opacity: 1;
+    transform: none;
+    filter: none;
+}
+@media print {
+    .viz-menu { display: none !important; }
+    body { background: white !important; color: black !important; }
+    .dark-mode { all: unset; }
+    .card, .section, section { break-inside: avoid; }
+    .animate-in { opacity: 1 !important; animation: none !important; }
+    [data-animate] { opacity: 1 !important; transform: none !important; filter: none !important; transition: none !important; }
+    @page { margin: 1.5cm; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    [data-animate] {
+        opacity: 1 !important;
+        transform: none !important;
+        filter: none !important;
+        transition: none !important;
+    }
+}
+</style>
+</head>
+<body>
+
+<!-- INFRA-MENU-HTML -->
+<nav class="viz-menu" id="vizMenu" aria-label="Visualization controls">
+    <button class="viz-menu-toggle" onclick="toggleMenu()" aria-label="Toggle menu" aria-expanded="false">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="3" y1="5" x2="15" y2="5"/>
+            <line x1="3" y1="9" x2="15" y2="9"/>
+            <line x1="3" y1="13" x2="15" y2="13"/>
+        </svg>
+    </button>
+    <div class="viz-menu-panel" id="vizMenuPanel">
+        <button onclick="toggleTheme()" class="viz-menu-item">
+            <span class="viz-menu-icon" id="themeIcon">&#9684;</span>
+            <span id="themeLabel">Toggle dark mode</span>
+        </button>
+        <button onclick="window.print()" class="viz-menu-item">
+            <span class="viz-menu-icon">&#9113;</span>
+            <span>Print / Save as PDF</span>
+        </button>
+        <button onclick="toggleFullscreen()" class="viz-menu-item">
+            <span class="viz-menu-icon" id="fsIcon">&#9974;</span>
+            <span id="fsLabel">Fullscreen</span>
+        </button>
+        <hr style="border:none;border-top:1px solid var(--border,#e2e8f0);margin:2px 8px">
+        <button onclick="saveAsImage()" class="viz-menu-item" id="saveImgBtn">
+            <span class="viz-menu-icon">&#128247;</span>
+            <span>Save as image</span>
+        </button>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="header">
+        <h1>Kubernetes <span>Attack Matrix</span></h1>
+        <p><a href="https://microsoft.github.io/Threat-Matrix-for-Kubernetes/" style="color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent)">Microsoft Threat Matrix for Kubernetes</a> &amp; <a href="https://attack.mitre.org/matrices/enterprise/containers/" style="color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent)">MITRE ATT&amp;CK for Containers</a> &mdash; 9 tactics, ~50 techniques. Click any technique to see risks and remediation.</p>
+        <div class="subtitle">&#9432; Click a technique to expand details &bull; click elsewhere to collapse</div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><div class="legend-dot click"></div>Click to expand</div>
+        <div class="legend-item"><div class="legend-dot risk"></div>What can go wrong</div>
+        <div class="legend-item"><div class="legend-dot fix"></div>How to fix</div>
+    </div>
+
+    <div class="matrix" id="matrix"></div>
+
+    <div class="footer">
+        Swaroop Rath &middot; <a href="mailto:rath.swaroop@gmail.com">rath.swaroop@gmail.com</a> &middot; 2026-03-05<br>
+        Generated with Claude
+    </div>
+</div>
+
+<script>
+var DATA = [
+  {
+    tactic: "Initial Access",
+    num: "TA0001",
+    description: "How attackers gain their first foothold in your cluster. This includes exploiting exposed dashboards, leaked kubeconfig files, compromised container images, application vulnerabilities, and stolen cloud credentials. Securing the front door is the highest-leverage defense.",
+    techniques: [
+      {
+        name: "Exposed Dashboard",
+        risk: "An unauthenticated or weakly-authenticated Kubernetes dashboard lets attackers enumerate workloads, read secrets, exec into pods, and deploy malicious containers — effectively granting full cluster control from a browser.",
+        fix: "Disable the dashboard in production or gate it behind SSO/MFA with RBAC. Use kubectl proxy for local-only access. Enforce network policies that block external ingress to dashboard ports."
+      },
+      {
+        name: "Kubeconfig File",
+        risk: "Leaked or overly permissive kubeconfig files give attackers direct kubectl access with whatever privileges the associated service account holds — often cluster-admin.",
+        fix: "Store kubeconfigs in secrets managers, never in repos or container images. Rotate credentials regularly. Use short-lived tokens (OIDC) instead of long-lived certificates. Audit kubeconfig permissions with kubectl auth can-i."
+      },
+      {
+        name: "Compromised Image in Registry",
+        risk: "A malicious or tampered container image runs attacker code the moment it is scheduled — exfiltrating secrets, mining crypto, or pivoting laterally, all while appearing as a legitimate workload.",
+        fix: "Enforce image signing and verification (cosign / Notary). Use admission controllers (OPA/Gatekeeper, Kyverno) to whitelist registries. Scan images in CI with Trivy, Grype, or Snyk before push."
+      },
+      {
+        name: "Application Vulnerability",
+        risk: "An RCE or SSRF in a containerized app gives attackers a shell inside the pod, from which they can access the service account token, metadata API, and mounted secrets.",
+        fix: "Patch dependencies aggressively. Use distroless or minimal base images to limit tooling available to attackers. Enforce network policies and drop all capabilities except those explicitly needed."
+      },
+      {
+        name: "Exposed Sensitive Interface",
+        risk: "Publicly reachable API servers, kubelet APIs, etcd, or cloud provider metadata endpoints let attackers query cluster state, steal tokens, or modify workloads without any initial compromise.",
+        fix: "Bind API server to private IPs; use VPN/bastion for access. Block metadata endpoint (169.254.169.254) via network policy. Disable anonymous auth on kubelet (--anonymous-auth=false)."
+      },
+      {
+        name: "Using Cloud Credentials",
+        risk: "Stolen cloud IAM keys (from CI logs, env vars, or instance metadata) let attackers authenticate to the managed K8s control plane and perform any permitted cluster operation remotely.",
+        fix: "Use workload identity / IRSA instead of static keys. Rotate cloud credentials on a schedule. Restrict IAM policies to least privilege and scope to specific clusters."
+      }
+    ]
+  },
+  {
+    tactic: "Execution",
+    num: "TA0002",
+    description: "Techniques attackers use to run malicious code inside your cluster. From exec-ing into containers and deploying new pods to exploiting application RCEs and injecting sidecars. If they can execute, they can do anything.",
+    techniques: [
+      {
+        name: "Exec into Container",
+        risk: "kubectl exec gives an interactive shell inside any pod the attacker's credentials can reach — enabling live data theft, process manipulation, and lateral movement to adjacent services.",
+        fix: "Restrict exec/attach via RBAC (remove pods/exec verb). Enable audit logging for exec events. Use Falco or a similar runtime monitor to alert on unexpected exec calls."
+      },
+      {
+        name: "bash/cmd Inside Container",
+        risk: "If a shell binary exists in the container, any code execution vulnerability instantly becomes an interactive session — making post-exploitation trivial.",
+        fix: "Use distroless images with no shell. If a shell is needed for debugging, use ephemeral debug containers (kubectl debug) rather than shipping shells in production images."
+      },
+      {
+        name: "New Container",
+        risk: "An attacker who can create pods can launch a privileged container with hostPID, hostNetwork, and volume mounts — effectively escaping the container boundary entirely.",
+        fix: "Enforce Pod Security Standards (restricted profile). Use admission controllers to deny privileged, hostPID, hostNetwork pods. Limit who can create deployments/pods via RBAC."
+      },
+      {
+        name: "Application Exploit (RCE)",
+        risk: "Remote code execution in the application layer lets the attacker run arbitrary commands inside the container, access the service account token at /var/run/secrets, and pivot from there.",
+        fix: "Keep dependencies patched. Use read-only root filesystem. Automount service account tokens only when needed (automountServiceAccountToken: false). Apply network policies to limit blast radius."
+      },
+      {
+        name: "Sidecar Injection",
+        risk: "A mutating webhook or misconfigured admission controller can silently inject a malicious sidecar into every new pod — intercepting traffic, exfiltrating data, or persisting across redeployments.",
+        fix: "Audit all mutating admission webhooks regularly. Restrict who can create/modify MutatingWebhookConfiguration via RBAC. Monitor pod spec diffs between requested and admitted pods."
+      },
+      {
+        name: "SSH Server in Container",
+        risk: "An SSH daemon running inside a container provides a persistent, encrypted backdoor that survives container restarts and bypasses standard Kubernetes audit logging.",
+        fix: "Scan images for sshd binaries in CI. Block SSH ports (22) via network policy. Use runtime security tools (Falco) to detect unexpected listening sockets inside containers."
+      }
+    ]
+  },
+  {
+    tactic: "Persistence",
+    num: "TA0003",
+    description: "How attackers maintain access even after pods restart, nodes rotate, or incidents are partially remediated. Backdoor containers, CronJobs, malicious admission controllers, and trojanized images all ensure the attacker keeps coming back.",
+    techniques: [
+      {
+        name: "Backdoor Container",
+        risk: "An attacker deploys a minimal container (busybox, alpine) with a reverse shell that runs indefinitely — providing persistent cluster access that survives node rescheduling.",
+        fix: "Use admission controllers to block unapproved images. Monitor for unknown pods in kube-system or other privileged namespaces. Alert on pods with no associated deployment/job."
+      },
+      {
+        name: "Writable hostPath Mount",
+        risk: "A pod with a writable hostPath volume can modify the host filesystem — writing cron jobs, SSH keys, or systemd units that persist even after the pod is deleted.",
+        fix: "Deny hostPath mounts via Pod Security Standards (restricted). If required, enforce read-only mounts. Use OPA/Gatekeeper policies to allowlist specific hostPath directories."
+      },
+      {
+        name: "Kubernetes CronJob",
+        risk: "A malicious CronJob re-executes attacker payloads on a schedule — maintaining persistent access and surviving pod deletions, restarts, and even cluster upgrades.",
+        fix: "Restrict CronJob/Job creation via RBAC. Monitor for CronJobs in unexpected namespaces. Alert on CronJobs created by non-CI/CD service accounts."
+      },
+      {
+        name: "Malicious Admission Controller",
+        risk: "A rogue mutating webhook can alter every pod at admission time — injecting sidecars, modifying env vars, adding volume mounts — without any visible change in the deployment spec.",
+        fix: "Audit webhooks: kubectl get mutatingwebhookconfigurations. Restrict webhook creation to cluster admins only. Use namespaceSelector to limit webhook scope. Monitor for unexpected webhook changes."
+      },
+      {
+        name: "Container Image Backdoor",
+        risk: "A trojanized base image in your registry infects every service that builds on it — giving attackers supply-chain level persistence across the entire organization.",
+        fix: "Pin images by digest, not tag. Sign images with cosign and enforce verification at admission. Use private registries with vulnerability scanning. Review Dockerfile FROM chains."
+      },
+      {
+        name: "Static Pods",
+        risk: "Static pods are managed directly by kubelet, not the API server — so they survive API server outages, don't appear in standard RBAC audit, and are harder to detect/remove.",
+        fix: "Monitor /etc/kubernetes/manifests on every node. Restrict SSH access to nodes. Alert on new static pod manifest files. Ensure node filesystem integrity monitoring is active."
+      }
+    ]
+  },
+  {
+    tactic: "Privilege Escalation",
+    num: "TA0004",
+    description: "Moving from limited container permissions to node-level or cluster-admin access. Privileged containers, hostPID/hostNetwork, cluster-admin bindings, and container breakout CVEs turn a small foothold into total control.",
+    techniques: [
+      {
+        name: "Privileged Container",
+        risk: "A container running with privileged: true has full access to all host devices, can load kernel modules, and can trivially escape to the host — it's equivalent to root on the node.",
+        fix: "Enforce Pod Security Standards (restricted). Deny privileged containers via admission controller. Audit existing workloads with kubectl get pods -o json and check securityContext."
+      },
+      {
+        name: "Cluster-admin Binding",
+        risk: "A ClusterRoleBinding granting cluster-admin to a compromised service account gives the attacker unrestricted access to every resource in every namespace — game over.",
+        fix: "Audit all ClusterRoleBindings regularly: kubectl get clusterrolebindings -o wide. Remove unnecessary cluster-admin grants. Use namespace-scoped RoleBindings where possible."
+      },
+      {
+        name: "hostPID / hostIPC",
+        risk: "Pods with hostPID can see and signal all host processes (including kubelet). hostIPC allows shared memory access across containers — enabling data theft and process injection.",
+        fix: "Block hostPID and hostIPC via Pod Security Standards. Audit pods with these flags. Only grant on exception basis with documented justification."
+      },
+      {
+        name: "hostNetwork",
+        risk: "A pod on the host network can sniff traffic, access services bound to localhost (including kubelet, etcd, metadata), and impersonate the node identity.",
+        fix: "Block hostNetwork in Pod Security Standards. Use CNI network policies to isolate host-network pods. Audit and justify every hostNetwork: true pod."
+      },
+      {
+        name: "Access Cloud Resources",
+        risk: "Instance metadata (169.254.169.254) exposes cloud IAM credentials to any pod — allowing escalation from container compromise to full cloud account takeover.",
+        fix: "Block metadata access via network policy. Use workload identity (GKE Workload Identity, EKS IRSA, Azure Workload Identity) to bind IAM roles to specific service accounts."
+      },
+      {
+        name: "Container Breakout (CVEs)",
+        risk: "Kernel or container runtime CVEs (e.g., CVE-2019-5736 runc, CVE-2020-15257 containerd) allow a container process to escape to the host with root privileges.",
+        fix: "Keep node OS, container runtime, and kernel patched. Use gVisor or Kata Containers for untrusted workloads. Enable seccomp and AppArmor profiles to reduce kernel attack surface."
+      }
+    ]
+  },
+  {
+    tactic: "Defense Evasion",
+    num: "TA0005",
+    description: "How attackers hide their tracks and avoid detection. Clearing logs, deleting Kubernetes events, naming pods to blend in, proxying connections, and disabling audit logging make forensics and incident response significantly harder.",
+    techniques: [
+      {
+        name: "Clear Container Logs",
+        risk: "Attackers truncate or delete container logs to erase evidence of compromise — making incident response and forensics blind to what actually happened.",
+        fix: "Ship logs to an external SIEM (Splunk, ELK, Scuba) in real time. Use immutable log storage. Alert on log gaps or sudden drops in log volume."
+      },
+      {
+        name: "Delete Kubernetes Events",
+        risk: "Kubernetes events record pod creation, scheduling, and errors. Deleting them hides the attacker's tracks — no record of rogue pods, failed probes, or config changes.",
+        fix: "Forward events to external storage (eventrouter, Heptio Eventrouter). Restrict delete on events via RBAC. Monitor for unusual event deletion patterns."
+      },
+      {
+        name: "Pod Name Similarity",
+        risk: "Naming a malicious pod coredns-7d8f4b6c9-x2k5p makes it blend in with legitimate workloads — defenders scrolling through kubectl output will skip right past it.",
+        fix: "Use deployment labels and owner references to identify unmanaged pods. Alert on pods not owned by a Deployment, DaemonSet, StatefulSet, or Job. Use kubectl get pods --show-labels."
+      },
+      {
+        name: "Connect from Proxy",
+        risk: "Routing malicious kubectl commands through a VPN, Tor, or compromised jumpbox masks the attacker's true IP — making audit log attribution nearly impossible.",
+        fix: "Enforce MFA and OIDC-based auth for API server access. Correlate audit logs with identity provider sessions. Restrict API server access to known CIDR ranges."
+      },
+      {
+        name: "Disable Audit Logging",
+        risk: "If the attacker can modify the API server audit policy or stop the audit log sink, all subsequent activity becomes invisible — the ultimate defense evasion.",
+        fix: "Protect audit config files on control plane nodes. Use managed K8s (GKE, EKS, AKS) where audit logging is enforced. Monitor audit pipeline health as a critical signal."
+      }
+    ]
+  },
+  {
+    tactic: "Credential Access",
+    num: "TA0006",
+    description: "Stealing secrets, tokens, and credentials from the cluster. Kubernetes secrets, service account tokens, cloud managed identities, and application configs are all treasure troves that unlock further compromise.",
+    techniques: [
+      {
+        name: "List Kubernetes Secrets",
+        risk: "kubectl get secrets dumps database passwords, API keys, TLS certificates, and cloud credentials — everything stored as K8s secrets is instantly compromised.",
+        fix: "Restrict secret access via RBAC (per-namespace, per-secret). Use external secret stores (Vault, AWS Secrets Manager). Enable secret encryption at rest (EncryptionConfiguration). Audit secret reads."
+      },
+      {
+        name: "Mount Service Principal",
+        risk: "Cloud service principal keys mounted into pods give attackers persistent, long-lived credentials to cloud APIs — surviving pod restarts and even cluster rebuilds.",
+        fix: "Use workload identity federation instead of mounting keys. If keys must be mounted, scope to minimum permissions. Rotate service principal credentials regularly."
+      },
+      {
+        name: "Access Container Service Account",
+        risk: "Every pod auto-mounts a service account token at /var/run/secrets/kubernetes.io/serviceaccount/token. This JWT authenticates to the API server with the SA's RBAC permissions.",
+        fix: "Set automountServiceAccountToken: false on pods that don't need API access. Use projected service account tokens with audience and expiration. Minimize SA permissions."
+      },
+      {
+        name: "Application Credentials in Config",
+        risk: "Database URLs, API keys, and passwords hardcoded in ConfigMaps, env vars, or mounted files are visible to anyone who can read the pod spec or exec into the container.",
+        fix: "Use external secret managers (Vault, SecretsManager). Never put credentials in ConfigMaps. Use sealed-secrets or external-secrets-operator for GitOps workflows."
+      },
+      {
+        name: "Access Managed Identity Credentials",
+        risk: "Cloud metadata endpoints (169.254.169.254) serve temporary IAM tokens to any pod on the node — allowing unauthorized cloud API access from compromised containers.",
+        fix: "Block metadata access with network policy. Use platform-specific workload identity (IRSA, Workload Identity, Pod Identity). Monitor for unexpected metadata API calls in cloud audit logs."
+      }
+    ]
+  },
+  {
+    tactic: "Discovery",
+    num: "TA0007",
+    description: "Mapping the cluster to identify targets. Querying the API server, kubelet, dashboard, and cloud metadata endpoints reveals the full topology — namespaces, services, secrets, and network layout — guiding the attacker's next moves.",
+    techniques: [
+      {
+        name: "Access the K8s API Server",
+        risk: "The API server is the brain of the cluster. An attacker with any valid token can enumerate namespaces, pods, services, secrets, and RBAC roles — mapping the entire attack surface.",
+        fix: "Restrict API server to private networks. Use RBAC to limit list/watch permissions. Enable audit logging for all API requests. Use network policies to restrict pod-to-API-server traffic."
+      },
+      {
+        name: "Access Kubelet API",
+        risk: "The kubelet API (port 10250) allows listing pods, executing commands, and reading logs on a specific node — without going through the API server's RBAC or audit.",
+        fix: "Set --anonymous-auth=false and --authorization-mode=Webhook on kubelet. Block port 10250 from pod network. Use NodeRestriction admission controller."
+      },
+      {
+        name: "Network Mapping",
+        risk: "From inside a pod, attackers can scan the cluster CIDR, discover services via DNS, and map internal network topology — identifying high-value targets like databases and caches.",
+        fix: "Enforce network policies (default deny ingress/egress). Limit DNS visibility with namespace-scoped DNS. Use service mesh (Istio, Linkerd) for mTLS and fine-grained traffic control."
+      },
+      {
+        name: "Access K8s Dashboard",
+        risk: "The dashboard UI reveals deployments, config maps, secrets (if permissions allow), and resource utilization — giving attackers a visual map of the entire cluster.",
+        fix: "Remove the dashboard from production clusters. If needed, enforce RBAC with a read-only service account. Use audit logging to track dashboard access."
+      },
+      {
+        name: "Instance Metadata API",
+        risk: "Cloud metadata endpoints expose instance identity, network config, user-data scripts (often containing secrets), and temporary IAM credentials — a goldmine for attackers.",
+        fix: "Block 169.254.169.254 via network policy or iptables on nodes. Use IMDSv2 (AWS) requiring session tokens. Audit metadata API access in cloud provider logs."
+      }
+    ]
+  },
+  {
+    tactic: "Lateral Movement",
+    num: "TA0008",
+    description: "Pivoting from one compromised pod to other workloads, namespaces, or cloud services. Flat cluster networking, shared credentials, writable volumes, and DNS/ARP poisoning let attackers spread across the environment.",
+    techniques: [
+      {
+        name: "Access Cloud Resources",
+        risk: "Credentials obtained from one pod (via metadata or mounted secrets) let attackers pivot to cloud services (S3, databases, IAM) — escalating from container to cloud-wide compromise.",
+        fix: "Implement least-privilege IAM. Use workload identity with per-service-account cloud bindings. Monitor for cross-service access patterns that deviate from baseline."
+      },
+      {
+        name: "Container Service Account",
+        risk: "A compromised pod's service account token can be used to interact with other pods, create new workloads, or read secrets in the same namespace — pivoting across services.",
+        fix: "Create dedicated service accounts per workload with minimal RBAC. Disable default service account token mounting. Use network policies to isolate namespaces."
+      },
+      {
+        name: "Cluster Internal Networking",
+        risk: "By default, all pods can talk to all other pods in the cluster. An attacker in one pod can directly reach databases, caches, and internal APIs without any network barrier.",
+        fix: "Deploy default-deny network policies in every namespace. Whitelist only required pod-to-pod traffic. Use a CNI that supports network policy enforcement (Calico, Cilium)."
+      },
+      {
+        name: "Application Credentials",
+        risk: "Credentials harvested from environment variables, config files, or memory of one service can authenticate to other services — enabling lateral movement across the application stack.",
+        fix: "Use mutual TLS (mTLS) via service mesh instead of shared credentials. Rotate application secrets regularly. Monitor for authentication from unexpected source pods."
+      },
+      {
+        name: "Writable Volume Mounts",
+        risk: "Shared PersistentVolumes or hostPath mounts let an attacker in one pod write malicious files that are read/executed by another pod — crossing workload boundaries via storage.",
+        fix: "Use ReadOnlyMany access mode where possible. Avoid sharing volumes between security-sensitive workloads. Audit PV/PVC configurations for overly broad access."
+      },
+      {
+        name: "CoreDNS Poisoning",
+        risk: "Compromising CoreDNS or spoofing DNS responses redirects traffic from legitimate services to attacker-controlled endpoints — enabling man-in-the-middle attacks cluster-wide.",
+        fix: "Restrict access to CoreDNS pods and configmaps via RBAC. Monitor CoreDNS for config changes. Use DNSSEC where possible. Alert on unexpected DNS resolution patterns."
+      },
+      {
+        name: "ARP Poisoning / Spoofing",
+        risk: "At the network layer, ARP spoofing lets an attacker intercept traffic between pods on the same node — capturing credentials, tokens, and sensitive data in transit.",
+        fix: "Use encrypted overlay networks (WireGuard via Cilium, Calico with encryption). Enforce mTLS via service mesh. Use CNI plugins that prevent L2 spoofing."
+      }
+    ]
+  },
+  {
+    tactic: "Impact",
+    num: "TA0040",
+    description: "The endgame — what attackers do once they have control. Data destruction, cryptomining, denial of service, and data exfiltration cause direct business harm: outages, financial loss, compliance violations, and reputational damage.",
+    techniques: [
+      {
+        name: "Data Destruction",
+        risk: "An attacker with write access to PersistentVolumes or databases can delete or corrupt production data — causing outages, data loss, and potentially unrecoverable damage.",
+        fix: "Implement backup and restore procedures (Velero). Use storage snapshots. Enforce RBAC to restrict volume and database access. Test restore procedures regularly."
+      },
+      {
+        name: "Resource Hijacking (Cryptomining)",
+        risk: "Cryptominers consume all available CPU/memory on nodes, degrading performance of legitimate workloads, increasing cloud costs dramatically, and potentially causing OOM kills.",
+        fix: "Set resource requests and limits on all pods. Use LimitRanges and ResourceQuotas per namespace. Monitor for unusual CPU spikes. Scan images for known miner binaries."
+      },
+      {
+        name: "Denial of Service",
+        risk: "Fork bombs, CPU-intensive loops, or network flooding from inside the cluster can take down nodes, starve legitimate pods of resources, and cascade into full cluster unavailability.",
+        fix: "Enforce resource limits and PodDisruptionBudgets. Use priority classes to protect critical workloads. Implement rate limiting on ingress. Use horizontal pod autoscaling with sane maximums."
+      },
+      {
+        name: "Data Exfiltration",
+        risk: "Sensitive data (PII, credentials, trade secrets) is copied out of the cluster via DNS tunneling, HTTP uploads, or direct egress — resulting in data breaches, compliance violations, and reputational damage.",
+        fix: "Enforce egress network policies (default deny). Monitor and log DNS queries for tunneling indicators. Use DLP solutions. Restrict outbound internet access to known-good endpoints."
+      },
+      {
+        name: "Endpoint Denial of Service",
+        risk: "Targeting specific service endpoints with traffic floods makes critical microservices unavailable — degrading user experience and potentially cascading through dependent services.",
+        fix: "Use rate limiting and circuit breakers (Envoy, Istio). Implement horizontal autoscaling. Deploy PodDisruptionBudgets to maintain minimum replicas during disruptions."
+      }
+    ]
+  }
+];
+
+// Render
+var matrix = document.getElementById('matrix');
+DATA.forEach(function(tactic) {
+    var col = document.createElement('div');
+    col.className = 'tactic';
+    col.innerHTML = '<div class="tactic-header-wrap">' +
+        '<div class="tactic-header"><div><span class="tactic-num">' + tactic.num + '</span>' + tactic.tactic + '</div>' +
+        '<svg class="header-chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 5 7 9 11 5"/></svg></div>' +
+        '<div class="tactic-header-detail"><div class="tactic-header-detail-inner">' + tactic.description + '</div></div>' +
+        '</div>';
+    var headerWrap = col.querySelector('.tactic-header-wrap');
+    headerWrap.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var wasActive = headerWrap.classList.contains('active');
+        document.querySelectorAll('.tactic-header-wrap.active').forEach(function(el) { el.classList.remove('active'); });
+        if (!wasActive) headerWrap.classList.add('active');
+    });
+    tactic.techniques.forEach(function(t) {
+        var card = document.createElement('div');
+        card.className = 'technique';
+        card.innerHTML =
+            '<div class="technique-name">' +
+                '<span>' + t.name + '</span>' +
+                '<svg class="chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 5 7 9 11 5"/></svg>' +
+            '</div>' +
+            '<div class="technique-detail">' +
+                '<div class="detail-inner">' +
+                    '<div class="detail-section risk">' +
+                        '<div class="detail-label risk"><span class="icon">&#9888;</span> What Can Go Wrong</div>' +
+                        '<div class="detail-text">' + t.risk + '</div>' +
+                    '</div>' +
+                    '<div class="detail-section fix">' +
+                        '<div class="detail-label fix"><span class="icon">&#10004;</span> How to Fix</div>' +
+                        '<div class="detail-text">' + t.fix + '</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        card.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var wasActive = card.classList.contains('active');
+            // Close all
+            document.querySelectorAll('.technique.active').forEach(function(el) {
+                el.classList.remove('active');
+            });
+            if (!wasActive) card.classList.add('active');
+        });
+        col.appendChild(card);
+    });
+    matrix.appendChild(col);
+});
+
+// Close on click outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.technique')) {
+        document.querySelectorAll('.technique.active').forEach(function(el) {
+            el.classList.remove('active');
+        });
+    }
+    if (!e.target.closest('.tactic-header-wrap')) {
+        document.querySelectorAll('.tactic-header-wrap.active').forEach(function(el) {
+            el.classList.remove('active');
+        });
+    }
+});
+</script>
+
+<!-- INFRA-MENU-JS -->
+<script>
+function toggleMenu() {
+    var menu = document.getElementById('vizMenu');
+    var toggle = menu.querySelector('.viz-menu-toggle');
+    var isOpen = menu.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', isOpen);
+}
+document.addEventListener('click', function(e) {
+    var menu = document.getElementById('vizMenu');
+    if (menu && !menu.contains(e.target)) menu.classList.remove('open');
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        var menu = document.getElementById('vizMenu');
+        if (menu) menu.classList.remove('open');
+    }
+});
+function toggleTheme() {
+    var isDark = document.body.classList.toggle('dark-mode');
+    localStorage.setItem('visualize-dark-mode', isDark);
+    updateThemeLabel();
+}
+function updateThemeLabel() {
+    var isDark = document.body.classList.contains('dark-mode');
+    var icon = document.getElementById('themeIcon');
+    var label = document.getElementById('themeLabel');
+    if (icon) icon.textContent = isDark ? '\u2600' : '\u25D0';
+    if (label) label.textContent = isDark ? 'Light mode' : 'Dark mode';
+}
+if (localStorage.getItem('visualize-dark-mode') === 'true' ||
+    (!localStorage.getItem('visualize-dark-mode') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    document.body.classList.add('dark-mode');
+}
+updateThemeLabel();
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(function(){});
+    } else {
+        document.exitFullscreen();
+    }
+}
+document.addEventListener('fullscreenchange', function() {
+    var icon = document.getElementById('fsIcon');
+    var label = document.getElementById('fsLabel');
+    var isFs = !!document.fullscreenElement;
+    if (icon) icon.textContent = isFs ? '\u26F6' : '\u26F6';
+    if (label) label.textContent = isFs ? 'Exit fullscreen' : 'Fullscreen';
+});
+(function initScrollReveal() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.querySelectorAll('[data-animate]').forEach(function(el) {
+            el.classList.add('is-visible');
+        });
+        return;
+    }
+    var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+            if (entry.isIntersecting) {
+                var el = entry.target;
+                var delay = parseInt(el.getAttribute('data-delay') || '0', 10);
+                var duration = el.getAttribute('data-duration');
+                if (duration) el.style.transitionDuration = duration + 'ms';
+                if (delay > 0) {
+                    setTimeout(function() { el.classList.add('is-visible'); }, delay);
+                } else {
+                    el.classList.add('is-visible');
+                }
+                observer.unobserve(el);
+            }
+        });
+    }, { threshold: 0.15 });
+    document.querySelectorAll('[data-animate]').forEach(function(el) {
+        observer.observe(el);
+    });
+})();
+function loadHtml2Canvas() {
+    if (typeof html2canvas !== 'undefined') return Promise.resolve();
+    return new Promise(function(resolve, reject) {
+        var script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+        script.integrity = 'sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H';
+        script.crossOrigin = 'anonymous';
+        script.onload = resolve;
+        script.onerror = function() { reject(new Error('html2canvas load failed')); };
+        document.head.appendChild(script);
+    });
+}
+function saveAsImage() {
+    var btn = document.getElementById('saveImgBtn');
+    var label = btn.querySelector('span:last-child');
+    var origText = label.textContent;
+    label.textContent = 'Loading...';
+    btn.style.pointerEvents = 'none';
+    loadHtml2Canvas().then(function() {
+        label.textContent = 'Capturing...';
+        doCapture(btn, label, origText);
+    }).catch(function(err) {
+        console.error('Failed to load html2canvas:', err);
+        label.textContent = origText;
+        btn.style.pointerEvents = '';
+        alert('Could not load screenshot library. Try Print / Save as PDF instead.');
+    });
+}
+function doCapture(btn, label, origText) {
+    var menu = document.getElementById('vizMenu');
+    menu.style.display = 'none';
+    var target = document.querySelector('.container') || document.querySelector('main') || document.body;
+    var overrideStyle = document.createElement('style');
+    overrideStyle.id = 'html2canvas-capture-overrides';
+    overrideStyle.textContent = '*, *::before, *::after { animation-play-state: paused !important; animation-delay: 0s !important; animation-duration: 0s !important; transition-duration: 0s !important; } .ani, .animate-in, [class*="delay-"], [data-animate] { opacity: 1 !important; transform: none !important; filter: none !important; }';
+    document.head.appendChild(overrideStyle);
+    var origBg = target.style.background;
+    if (target !== document.body) {
+        target.style.background = getComputedStyle(document.body).backgroundColor || '#ffffff';
+    }
+    var scrollPos = window.scrollY;
+    window.scrollTo(0, 0);
+    var capture = function() {
+        void target.offsetHeight;
+        html2canvas(target, { scale: 2, useCORS: true, allowTaint: true, logging: false }).then(function(canvas) {
+            var link = document.createElement('a');
+            link.download = 'kubernetes-attack-matrix.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }).catch(function(err) {
+            console.error('Screenshot failed:', err);
+            alert('Screenshot failed. Try Print / Save as PDF instead.');
+        }).finally(function() {
+            overrideStyle.remove();
+            target.style.background = origBg;
+            menu.style.display = '';
+            label.textContent = origText;
+            btn.style.pointerEvents = '';
+            menu.classList.remove('open');
+            window.scrollTo(0, scrollPos);
+        });
+    };
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(function() { setTimeout(capture, 50); });
+    } else {
+        setTimeout(capture, 500);
+    }
+}
+</script>
+
+</body>
+</html>
